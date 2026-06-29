@@ -371,23 +371,26 @@
       text-align: center;
     }
 
+    /* ===== МОБИЛЬНАЯ ВЕРСИЯ ===== */
     @media (max-width: 640px) {
       .hero-content {
         padding: 20px 0 32px;
-        gap: 24px;
+        gap: 20px;
         min-height: 300px;
       }
       .hero-wrapper {
         min-height: 300px;
       }
       .hero-content h1 {
-        font-size: 1.6rem;
+        font-size: 1.4rem;
+        line-height: 1.3;
       }
       .btn-primary {
         width: 100%;
         text-align: center;
-        padding: 18px 32px;
-        font-size: 1.1rem;
+        padding: 14px 28px;
+        font-size: 1rem;
+        max-width: 320px;
       }
       .form-section {
         padding: 28px 16px;
@@ -399,8 +402,54 @@
         font-size: 26px;
       }
       .highlight-text {
-        font-size: 1.1rem;
-        padding: 16px 20px;
+        font-size: 1rem;
+        padding: 14px 16px;
+      }
+      .section-title {
+        font-size: 1.5rem;
+      }
+      .grid-4 {
+        gap: 16px;
+      }
+      .card {
+        padding: 20px 16px;
+      }
+      .grid-3 {
+        gap: 16px;
+      }
+      .case-card {
+        padding: 20px 16px;
+      }
+      .process-grid {
+        gap: 16px;
+      }
+      .process-step {
+        padding: 18px 14px;
+      }
+      .form-left h2 {
+        font-size: 1.5rem;
+      }
+      .form-left p {
+        font-size: 1rem;
+      }
+    }
+
+    /* ===== ОЧЕНЬ МАЛЕНЬКИЕ ЭКРАНЫ ===== */
+    @media (max-width: 400px) {
+      .hero-content h1 {
+        font-size: 1.2rem;
+      }
+      .btn-primary {
+        padding: 12px 20px;
+        font-size: 0.9rem;
+        max-width: 280px;
+      }
+      .logo {
+        font-size: 22px;
+      }
+      .highlight-text {
+        font-size: 0.9rem;
+        padding: 12px 14px;
       }
     }
 
@@ -476,7 +525,7 @@
           </div>
         </header>
 
-        <h1>Специалист по <span>автоматизации продаж</span> малого бизнеса</h1>
+        <h1>Специалист по <span>автоматизации продаж</span> малого бизнеса, <span>Виолетта</span></h1>
 
         <button class="btn-primary" data-scroll-to="free-audit">
           <i class="fas fa-microphone-alt" style="margin-right: 12px;"></i>Получить бесплатный аудит
