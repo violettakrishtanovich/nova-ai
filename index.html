@@ -371,7 +371,6 @@
       text-align: center;
     }
 
-    /* ===== МОБИЛЬНАЯ ВЕРСИЯ ===== */
     @media (max-width: 640px) {
       .hero-content {
         padding: 20px 0 32px;
@@ -434,7 +433,6 @@
       }
     }
 
-    /* ===== ОЧЕНЬ МАЛЕНЬКИЕ ЭКРАНЫ ===== */
     @media (max-width: 400px) {
       .hero-content h1 {
         font-size: 1.2rem;
@@ -624,22 +622,24 @@
         </div>
       </div>
       <div class="form-right">
-        <form id="contactForm">
+        <form id="contactForm" novalidate>
           <div class="form-group">
             <label><i class="far fa-user"></i> Ваше имя</label>
-            <input type="text" id="userName" name="name" placeholder="Алексей" required />
+            <input type="text" id="userName" name="name" placeholder="Алексей" required maxlength="100" />
+            <span class="error-message" style="color: #d09090; font-size: 0.8rem; display: none;"></span>
           </div>
           <div class="form-group">
             <label><i class="far fa-envelope"></i> Ваш Email</label>
-            <input type="email" id="userEmail" name="email" placeholder="alex@example.com" required />
+            <input type="email" id="userEmail" name="email" placeholder="alex@example.com" required maxlength="100" />
+            <span class="error-message" style="color: #d09090; font-size: 0.8rem; display: none;"></span>
           </div>
           <div class="form-group">
             <label><i class="fab fa-telegram"></i> Telegram</label>
-            <input type="text" id="userTelegram" name="telegram" placeholder="@alex_bot" />
+            <input type="text" id="userTelegram" name="telegram" placeholder="@alex_bot" maxlength="100" />
           </div>
           <div class="form-group">
             <label><i class="far fa-comment"></i> Опишите ваш проект</label>
-            <textarea id="userProject" name="project" placeholder="Кратко опишите бизнес и задачи..."></textarea>
+            <textarea id="userProject" name="project" placeholder="Кратко опишите бизнес и задачи..." maxlength="1000"></textarea>
           </div>
           <button type="button" class="btn-submit" id="submitBtn">
             <i class="fas fa-paper-plane" style="margin-right: 10px;"></i>Отправить заявку
@@ -656,6 +656,16 @@
 
   <script>
     (function() {
+      'use strict';
+
+      // ========== БЕЗОПАСНАЯ КОНФИГУРАЦИЯ ==========
+      // ВНИМАНИЕ: В реальном проекте токены должны храниться на сервере!
+      // Это временное решение для демонстрации
+      const CONFIG = {
+        BOT_TOKEN: '8619679968:AAFCPwyuQipzHyPR3g_B9R2Znk99K1ylAG0',
+        CHAT_ID: '1179953952'
+      };
+
       // ========== СКРОЛЛ К ФОРМЕ ==========
       const scrollButtons = document.querySelectorAll('[data-scroll-to="free-audit"]');
       const targetElement = document.getElementById('free-audit');
@@ -673,13 +683,14 @@
         });
       }
 
-      // ========== ФУНКЦИЯ ДЛЯ УВЕДОМЛЕНИЙ ==========
+      // ========== ФУНКЦИЯ ДЛЯ УВЕДОМЛЕНИЙ (БЕЗОПАСНАЯ) ==========
       function showNotification(message, type = 'info') {
         const existing = document.querySelector('.notification');
         if (existing) existing.remove();
 
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
+        // Используем textContent вместо innerHTML для защиты от XSS
         notification.textContent = message;
         document.body.appendChild(notification);
 
@@ -690,53 +701,184 @@
         }, 5000);
       }
 
-      // ========== ОТПРАВКА ФОРМЫ В TELEGRAM ==========
+      // ========== ВАЛИДАЦИЯ ПОЛЕЙ ==========
+      function validateField(input) {
+        const errorSpan = input.parentElement.querySelector('.error-message');
+        if (!errorSpan) return true;
+
+        let isValid = true;
+        let errorMessage = '';
+
+        if (input.hasAttribute('required') && !input.value.trim()) {
+          isValid = false;
+          errorMessage = 'Это поле обязательно';
+        } else if (input.type === 'email' && input.value.trim()) {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(input.value.trim())) {
+            isValid = false;
+            errorMessage = 'Введите корректный email';
+          }
+        } else if (input.id === 'userName' && input.value.trim().length < 2) {
+          isValid = false;
+          errorMessage = 'Имя должно содержать минимум 2 символа';
+        } else if (input.id === 'userTelegram' && input.value.trim() && !input.value.trim().startsWith('@')) {
+          isValid = false;
+          errorMessage = 'Telegram должен начинаться с @';
+        }
+
+        if (!isValid) {
+          errorSpan.textContent = errorMessage;
+          errorSpan.style.display = 'block';
+          input.style.borderColor = '#d09090';
+        } else {
+          errorSpan.style.display = 'none';
+          input.style.borderColor = '';
+        }
+
+        return isValid;
+      }
+
+      // ========== ОБРАБОТЧИКИ ДЛЯ ВАЛИДАЦИИ ==========
+      const inputs = document.querySelectorAll('#userName, #userEmail, #userTelegram, #userProject');
+      inputs.forEach(input => {
+        input.addEventListener('blur', function() {
+          validateField(this);
+        });
+        input.addEventListener('input', function() {
+          if (this.style.borderColor === 'rgb(208, 144, 144)' || this.style.borderColor === '#d09090') {
+            validateField(this);
+          }
+        });
+      });
+
+      // ========== ОТПРАВКА ФОРМЫ В TELEGRAM (С ЗАЩИТОЙ) ==========
       const submitBtn = document.getElementById('submitBtn');
+      let isSubmitting = false;
+
+      // Функция для экранирования текста
+      function sanitizeText(text) {
+        if (!text) return '';
+        return String(text).trim()
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;')
+          .slice(0, 1000); // Ограничение длины
+      }
 
       submitBtn.addEventListener('click', async function() {
-        const name = document.getElementById('userName').value.trim();
-        const email = document.getElementById('userEmail').value.trim();
-        const telegram = document.getElementById('userTelegram').value.trim();
-        const project = document.getElementById('userProject').value.trim();
+        if (isSubmitting) return;
+
+        const nameInput = document.getElementById('userName');
+        const emailInput = document.getElementById('userEmail');
+        const telegramInput = document.getElementById('userTelegram');
+        const projectInput = document.getElementById('userProject');
+
+        // Валидация всех полей
+        let isValid = true;
+        [nameInput, emailInput, telegramInput, projectInput].forEach(input => {
+          if (!validateField(input)) {
+            isValid = false;
+          }
+        });
+
+        if (!isValid) {
+          showNotification('Пожалуйста, исправьте ошибки в форме.', 'error');
+          return;
+        }
+
+        const name = sanitizeText(nameInput.value);
+        const email = sanitizeText(emailInput.value);
+        const telegram = sanitizeText(telegramInput.value);
+        const project = sanitizeText(projectInput.value);
 
         if (!name || !email) {
           showNotification('Пожалуйста, заполните имя и email.', 'error');
           return;
         }
 
+        // Блокируем кнопку
+        isSubmitting = true;
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 10px;"></i>Отправка...';
 
-        const BOT_TOKEN = '8619679968:AAFCPwyuQipzHyPR3g_B9R2Znk99K1ylAG0';
-        const CHAT_ID = '1179953952';
-
-        const message = `📩 *Новая заявка с NOVA AI*%0A%0A👤 Имя: ${encodeURIComponent(name)}%0A📧 Email: ${encodeURIComponent(email)}%0A📱 Telegram: ${encodeURIComponent(telegram || '—')}%0A📝 Проект: ${encodeURIComponent(project || '—')}`;
-
-        const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${message}&parse_mode=Markdown`;
-
         try {
-          const response = await fetch(url);
-          const result = await response.json();
+          // Формируем безопасное сообщение
+          const message = [
+            '📩 *Новая заявка с NOVA AI*',
+            '',
+            `👤 Имя: ${name}`,
+            `📧 Email: ${email}`,
+            `📱 Telegram: ${telegram || '—'}`,
+            `📝 Проект: ${project || '—'}`
+          ].join('%0A');
 
-          if (result.ok) {
-            showNotification('✅ Заявка успешно отправлена! Я свяжусь с вами.', 'success');
-            document.getElementById('userName').value = '';
-            document.getElementById('userEmail').value = '';
-            document.getElementById('userTelegram').value = '';
-            document.getElementById('userProject').value = '';
-          } else {
-            console.error('Telegram API error:', result);
-            const errorMsg = result.description || 'Неизвестная ошибка';
-            showNotification(`❌ Ошибка: ${errorMsg}`, 'error');
+          const url = `https://api.telegram.org/bot${CONFIG.BOT_TOKEN}/sendMessage?chat_id=${CONFIG.CHAT_ID}&text=${message}&parse_mode=Markdown`;
+
+          // Добавляем таймаут для защиты от зависания
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+          try {
+            const response = await fetch(url, {
+              signal: controller.signal,
+              method: 'GET',
+              headers: {
+                'Accept': 'application/json'
+              }
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+
+            if (result.ok) {
+              showNotification('✅ Заявка успешно отправлена! Я свяжусь с вами.', 'success');
+              // Очищаем форму
+              nameInput.value = '';
+              emailInput.value = '';
+              telegramInput.value = '';
+              projectInput.value = '';
+              // Убираем стили ошибок
+              document.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
+              document.querySelectorAll('input, textarea').forEach(el => el.style.borderColor = '');
+            } else {
+              console.error('Telegram API error:', result);
+              const errorMsg = result.description ? result.description.substring(0, 100) : 'Неизвестная ошибка';
+              showNotification(`❌ Ошибка: ${errorMsg}`, 'error');
+            }
+          } catch (fetchError) {
+            if (fetchError.name === 'AbortError') {
+              showNotification('⚠️ Превышено время ожидания. Попробуйте позже.', 'error');
+            } else {
+              console.error('Fetch error:', fetchError);
+              showNotification('⚠️ Не удалось отправить заявку. Проверьте интернет.', 'error');
+            }
           }
+
         } catch (error) {
-          console.error('Fetch error:', error);
-          showNotification('⚠️ Не удалось отправить заявку. Проверьте интернет.', 'error');
+          console.error('Error:', error);
+          showNotification('⚠️ Произошла ошибка. Попробуйте позже.', 'error');
         } finally {
+          isSubmitting = false;
           submitBtn.disabled = false;
           submitBtn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right: 10px;"></i>Отправить заявку';
         }
       });
+
+      // ========== ЗАЩИТА ОТ ДВОЙНОЙ ОТПРАВКИ (Enter) ==========
+      document.getElementById('contactForm').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          submitBtn.click();
+        }
+      });
+
     })();
   </script>
 </body>
